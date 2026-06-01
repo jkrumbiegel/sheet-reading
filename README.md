@@ -7,8 +7,13 @@ red next to the target so you see your mistake.
 
 Notes come endlessly, one at a time, each jumping far from the previous one
 (configurable minimum interval), so you must recognise each note on its own
-instead of adjusting relative to its neighbour. A streak counter rewards correct
-runs; the best streak is kept in `localStorage`.
+instead of adjusting relative to its neighbour. The range spans four ledger lines
+above the treble staff (G6) to four below the bass staff (F1). A streak counter
+rewards correct runs; the best streak is kept in `localStorage`.
+
+Per-note success/failure counts are stored, and the next note is drawn from a
+distribution biased toward the notes you get wrong most — easy notes still show
+up, just less often.
 
 Live: https://jkrumbiegel.com/sheet-reading/
 
@@ -37,9 +42,10 @@ src/
   domain/        pure, deterministic, fully test-covered
     note.ts        spelled note <-> MIDI number (C4 = 60), nearest-octave helper
     scale.ts       major-key spelling, allowed-note pool, arbitrary-MIDI spelling
-    sequence.ts    pickNote: next note at least N semitones from the previous
+    sequence.ts    pickWeightedNote: next note ≥N semitones away, difficulty-weighted
     match.ts       played vs expected pitch -> correct | wrong (octave-optional)
     score.ts       streak / best-streak update logic
+    stats.ts       per-note success/failure tally and difficulty weighting
     rng.ts         seeded PRNG (mulberry32)
   io/            thin adapters, verified by build + manual run
     keyboard.ts    computer-key -> MIDI (the key map itself is unit-tested)

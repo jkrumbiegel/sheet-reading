@@ -1,7 +1,8 @@
 import "./style.css";
 import { allowedNotes, spellMidi, keyPrefersFlats } from "./domain/scale";
-import { pickNote } from "./domain/sequence";
+import { pickWeightedNote } from "./domain/sequence";
 import { emptyScore, updateScore, type Score } from "./domain/score";
+import { recordResult, noteWeight, type Stats } from "./domain/stats";
 import { matchPitch } from "./domain/match";
 import { nearestMidiWithPitchClass, noteToMidi, type SpelledNote } from "./domain/note";
 import { mulberry32 } from "./domain/rng";
@@ -11,10 +12,11 @@ import { listenMidi, type MidiStatus } from "./io/midi";
 import { buildPiano } from "./io/piano";
 import { KEY_OPTIONS } from "./keys";
 
-const RANGE = { minMidi: 48, maxMidi: 84 };
+const RANGE = { minMidi: 29, maxMidi: 91 }; // F1 (4 ledger below bass) .. G6 (4 ledger above treble)
 const LINGER_MS = 500; // how long the green correct note stays after the key is released
 const PIANO_OCTAVES = 1;
 const BEST_KEY = "sheet-reading.best";
+const STATS_KEY = "sheet-reading.stats";
 
 const settings = {
   keyIndex: 0,
@@ -37,10 +39,19 @@ let pool: SpelledNote[] = [];
 let current: SpelledNote;
 let prevMidi: number | null = null;
 let score: Score = emptyScore(loadBest());
+let stats: Stats = loadStats();
 let awaitingRelease: number | null = null;
 
 function loadBest(): number {
   return Number(localStorage.getItem(BEST_KEY)) || 0;
+}
+
+function loadStats(): Stats {
+  try {
+    return JSON.parse(localStorage.getItem(STATS_KEY) ?? "{}") as Stats;
+  } catch {
+    return {};
+  }
 }
 
 function currentScale() {
@@ -51,9 +62,15 @@ function renderPending() {
   renderNotes(staffEl, [{ note: current, status: "pending" }]);
 }
 
-/** Move to a fresh note, far from the one just finished. */
+/** Move to a fresh note, far from the one just finished, biased toward harder notes. */
 function advance() {
-  current = pickNote(pool, prevMidi, settings.minInterval, rng);
+  current = pickWeightedNote(
+    pool,
+    prevMidi,
+    settings.minInterval,
+    (n) => noteWeight(stats[noteToMidi(n)]),
+    rng,
+  );
   prevMidi = noteToMidi(current);
   renderPending();
 }
@@ -85,6 +102,8 @@ function onPlay(midi: number) {
   const correct = matchPitch(noteToMidi(current), midi, { ignoreOctave: settings.ignoreOctave }) === "correct";
   score = updateScore(score, correct);
   if (score.best > loadBest()) localStorage.setItem(BEST_KEY, String(score.best));
+  stats = recordResult(stats, noteToMidi(current), correct);
+  localStorage.setItem(STATS_KEY, JSON.stringify(stats));
   updateScoreUI();
 
   if (correct) {

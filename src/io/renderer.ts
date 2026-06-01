@@ -10,9 +10,9 @@ const COLORS: Record<NoteStatus, string> = {
   wrong: "#d12b2b",
 };
 
-const HEIGHT = 240;
-const TREBLE_Y = 20;
-const BASS_Y = 120;
+const HEIGHT = 340; // room for up to four ledger lines above the treble and below the bass
+const TREBLE_Y = 50;
+const BASS_Y = 170;
 
 /** Empty measures drawn between the clef and the note, to keep the note far from the clef. */
 const EMPTY_MEASURES = 3;
