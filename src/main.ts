@@ -13,7 +13,7 @@ import { KEY_OPTIONS } from "./keys";
 
 const RANGE = { minMidi: 48, maxMidi: 84 };
 const LINGER_MS = 500; // how long the green correct note stays after the key is released
-const PIANO_OCTAVES = 2;
+const PIANO_OCTAVES = 1;
 const BEST_KEY = "sheet-reading.best";
 
 const settings = {
