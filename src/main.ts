@@ -12,7 +12,7 @@ import { listenMidi, type MidiStatus } from "./io/midi";
 import { buildPiano } from "./io/piano";
 import { KEY_OPTIONS } from "./keys";
 
-const RANGE = { minMidi: 29, maxMidi: 91 }; // F1 (4 ledger below bass) .. G6 (4 ledger above treble)
+const RANGE = { minMidi: 28, maxMidi: 93 }; // E1 .. A6
 const LINGER_MS = 500; // how long the green correct note stays after the key is released
 const PIANO_OCTAVES = 1;
 const BEST_KEY = "sheet-reading.best";

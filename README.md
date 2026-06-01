@@ -7,9 +7,9 @@ red next to the target so you see your mistake.
 
 Notes come endlessly, one at a time, each jumping far from the previous one
 (configurable minimum interval), so you must recognise each note on its own
-instead of adjusting relative to its neighbour. The range spans four ledger lines
-above the treble staff (G6) to four below the bass staff (F1). A streak counter
-rewards correct runs; the best streak is kept in `localStorage`.
+instead of adjusting relative to its neighbour. The range spans E1 to A6 (well
+past four ledger lines either side of the grand staff). A streak counter rewards
+correct runs; the best streak is kept in `localStorage`.
 
 Per-note success/failure counts are stored, and the next note is drawn from a
 distribution biased toward the notes you get wrong most — easy notes still show
