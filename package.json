@@ -1,0 +1,21 @@
+{
+  "name": "sheet-reading",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7",
+    "vitest": "^3.0.2"
+  },
+  "dependencies": {
+    "vexflow": "^4.2.3"
+  }
+}
