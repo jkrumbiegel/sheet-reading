@@ -10,7 +10,7 @@ Notes come endlessly, one at a time, each jumping far from the previous one
 instead of adjusting relative to its neighbour. A streak counter rewards correct
 runs; the best streak is kept in `localStorage`.
 
-Live: https://jkrumbiegel.github.io/sheet-reading/
+Live: https://jkrumbiegel.com/sheet-reading/
 
 ## Run
 
