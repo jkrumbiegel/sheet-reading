@@ -11,8 +11,13 @@
 
       <section id="stage">
         <div id="staff"></div>
-        <p id="progress"></p>
+        <div id="streak" title="Current streak / best">
+          <span id="streak-current">0</span>
+          <span id="streak-best">best 0</span>
+        </div>
       </section>
+
+      <div id="piano"></div>
 
       <section id="controls">
         <label>
@@ -31,11 +36,6 @@
         </label>
 
         <label>
-          Sequence length
-          <input type="number" id="length" min="1" max="200" />
-        </label>
-
-        <label>
           Keyboard base octave
           <input type="number" id="baseOctave" min="1" max="7" />
         </label>
@@ -44,8 +44,6 @@
           <input type="checkbox" id="ignoreOctave" />
           Ignore octave (match pitch class only)
         </label>
-
-        <button id="new">New sequence</button>
       </section>
 
       <p id="midi-status" class="status"></p>

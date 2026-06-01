@@ -27,3 +27,9 @@ export function naturalPitchClass(step: Step): number {
 export function noteToMidi(note: SpelledNote): number {
   return 12 * (note.octave + 1) + naturalPitchClass(note.step) + note.alter;
 }
+
+/** The MIDI number with the given pitch class that lies closest to `target`. */
+export function nearestMidiWithPitchClass(pitchClass: number, target: number): number {
+  const pc = ((pitchClass % 12) + 12) % 12;
+  return pc + 12 * Math.round((target - pc) / 12);
+}

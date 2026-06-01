@@ -1,13 +1,16 @@
 # Sheet Reading Trainer
 
 A small web app for drilling note reading on piano staves. A note is shown on a
-grand staff; you play it on your computer keyboard (quick check) or MIDI keyboard
-(real training). A correct pitch turns green and advances; a wrong one turns red
-and you retry.
+grand staff; you play it on your computer keyboard, the on-screen piano (tap on
+mobile), or a MIDI keyboard. A correct pitch turns green; a wrong one is shown in
+red next to the target so you see your mistake.
 
-The training sequences jump far between consecutive notes (configurable minimum
-interval) and notes are shown one at a time, so you must recognise each note on
-its own instead of adjusting relative to its neighbour.
+Notes come endlessly, one at a time, each jumping far from the previous one
+(configurable minimum interval), so you must recognise each note on its own
+instead of adjusting relative to its neighbour. A streak counter rewards correct
+runs; the best streak is kept in `localStorage`.
+
+Live: https://jkrumbiegel.github.io/sheet-reading/
 
 ## Run
 
@@ -22,7 +25,7 @@ Node is pinned to 24 via `mise.toml`.
 
 MIDI input uses the native Web MIDI API (Chrome/Edge; Safari behind a flag).
 Without MIDI, the computer keyboard works: `A S D F G H J K` = `C D E F G A B C`,
-with `W E T Y U` for the black keys.
+with `W E T Y U` for the black keys — or tap the on-screen piano.
 
 ## Architecture
 
@@ -31,17 +34,18 @@ DOM, MIDI, and VexFlow).
 
 ```
 src/
-  domain/        pure, deterministic, 100% test-covered
-    note.ts        spelled note <-> MIDI number (C4 = 60)
-    scale.ts       major-key spelling + the allowed-note pool for a key
-    sequence.ts    random walk with a minimum-interval constraint (seeded RNG)
-    match.ts       played vs expected pitch -> correct | wrong
-    session.ts     training-session state machine
-    rng.ts         seeded PRNG (mulberry32) for reproducible sequences
+  domain/        pure, deterministic, fully test-covered
+    note.ts        spelled note <-> MIDI number (C4 = 60), nearest-octave helper
+    scale.ts       major-key spelling, allowed-note pool, arbitrary-MIDI spelling
+    sequence.ts    pickNote: next note at least N semitones from the previous
+    match.ts       played vs expected pitch -> correct | wrong (octave-optional)
+    score.ts       streak / best-streak update logic
+    rng.ts         seeded PRNG (mulberry32)
   io/            thin adapters, verified by build + manual run
     keyboard.ts    computer-key -> MIDI (the key map itself is unit-tested)
-    midi.ts        Web MIDI Note-On subscription
-    renderer.ts    VexFlow grand-staff rendering of a single note
+    midi.ts        Web MIDI Note-On / Note-Off subscription
+    renderer.ts    VexFlow grand-staff rendering (note far from the clef)
+    piano.ts       tappable on-screen piano keyboard
   keys.ts        the selectable major keys
   main.ts        settings UI + wiring
 ```
@@ -49,11 +53,17 @@ src/
 All the logic worth testing lives in `domain/`; the adapters just translate
 events in and out of it.
 
+## Deployment
+
+Pushing to `main` runs the tests, builds, and deploys to GitHub Pages via
+`.github/workflows/deploy.yml`. The Vite `base` is set to `/sheet-reading/` for
+the build so asset paths resolve under the project-pages URL.
+
 ## Settings
 
 Base key (default C major), include sharps/flats, minimum jump between notes,
-sequence length, keyboard base octave, and ignore-octave matching (handy for the
-one-octave computer keyboard).
+keyboard base octave, and ignore-octave matching (match by pitch class only —
+handy for the one-octave computer keyboard and the on-screen piano).
 
 ## Status / next steps
 

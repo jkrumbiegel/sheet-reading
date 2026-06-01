@@ -64,6 +64,17 @@ export function scaleSpelling(scale: Scale): LetterSpelling[] {
   });
 }
 
+/** Spell an arbitrary MIDI number, choosing sharps or flats by preference. */
+export function spellMidi(midi: number, preferFlat: boolean): SpelledNote {
+  const spelling = (preferFlat ? FLAT_TABLE : SHARP_TABLE)[mod12(midi)]!;
+  const octave = (midi - naturalPitchClass(spelling.step) - spelling.alter) / 12 - 1;
+  return { step: spelling.step, alter: spelling.alter, octave };
+}
+
+export function keyPrefersFlats(scale: Scale): boolean {
+  return scaleSpelling(scale).some((s) => s.alter < 0);
+}
+
 function spellingByPitchClass(scale: Scale, includeAccidentals: boolean): Map<number, LetterSpelling> {
   const byPc = new Map<number, LetterSpelling>();
   for (const s of scaleSpelling(scale)) {

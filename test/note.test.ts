@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { noteToMidi, naturalPitchClass } from "../src/domain/note";
+import { noteToMidi, naturalPitchClass, nearestMidiWithPitchClass } from "../src/domain/note";
 
 describe("noteToMidi", () => {
   it("places middle C at MIDI 60", () => {
@@ -16,6 +16,18 @@ describe("noteToMidi", () => {
 
   it("applies a flat as -1 semitone", () => {
     expect(noteToMidi({ step: "B", alter: -1, octave: 3 })).toBe(58);
+  });
+});
+
+describe("nearestMidiWithPitchClass", () => {
+  it("returns the target when it already has the pitch class", () => {
+    expect(nearestMidiWithPitchClass(0, 60)).toBe(60);
+  });
+
+  it("picks the octave closest to the target", () => {
+    expect(nearestMidiWithPitchClass(0, 67)).toBe(72); // C5 (5 away) over C4 (7 away)
+    expect(nearestMidiWithPitchClass(4, 60)).toBe(64); // E4 over E3
+    expect(nearestMidiWithPitchClass(11, 60)).toBe(59); // B3 (1 away) over B4
   });
 });
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { scaleSpelling, allowedNotes } from "../src/domain/scale";
+import { scaleSpelling, allowedNotes, spellMidi, keyPrefersFlats } from "../src/domain/scale";
 import { noteToMidi } from "../src/domain/note";
 
 const cMajor = { tonic: { step: "C", alter: 0 }, mode: "major" } as const;
@@ -73,5 +73,30 @@ describe("allowedNotes", () => {
     const notes = allowedNotes(dMajor, true, range);
     const midis = notes.map(noteToMidi);
     expect([...midis].sort((a, b) => a - b)).toEqual(midis);
+  });
+});
+
+describe("spellMidi", () => {
+  it("spells naturals", () => {
+    expect(spellMidi(60, false)).toEqual({ step: "C", alter: 0, octave: 4 });
+    expect(spellMidi(59, false)).toEqual({ step: "B", alter: 0, octave: 3 });
+  });
+
+  it("spells black keys as sharps or flats per preference", () => {
+    expect(spellMidi(61, false)).toEqual({ step: "C", alter: 1, octave: 4 });
+    expect(spellMidi(61, true)).toEqual({ step: "D", alter: -1, octave: 4 });
+    expect(spellMidi(70, false)).toEqual({ step: "A", alter: 1, octave: 4 });
+    expect(spellMidi(70, true)).toEqual({ step: "B", alter: -1, octave: 4 });
+  });
+});
+
+describe("keyPrefersFlats", () => {
+  it("is false for C major and sharp keys", () => {
+    expect(keyPrefersFlats(cMajor)).toBe(false);
+    expect(keyPrefersFlats(dMajor)).toBe(false);
+  });
+
+  it("is true for flat keys", () => {
+    expect(keyPrefersFlats(fMajor)).toBe(true);
   });
 });

@@ -23,18 +23,25 @@ export function keyToMidi(key: string, baseOctave: number): number | null {
   return noteToMidi({ step: "C", alter: 0, octave: baseOctave }) + offset;
 }
 
-/** Listen for mapped key presses and report their MIDI numbers. Returns a disposer. */
+/** Listen for mapped key presses/releases and report their MIDI numbers. Returns a disposer. */
 export function listenKeyboard(
   getBaseOctave: () => number,
   onNote: (midi: number) => void,
+  onRelease: (midi: number) => void,
 ): () => void {
-  const handler = (event: KeyboardEvent) => {
+  const dispatch = (cb: (midi: number) => void) => (event: KeyboardEvent) => {
     if (event.repeat || event.metaKey || event.ctrlKey || event.altKey) return;
     const midi = keyToMidi(event.key, getBaseOctave());
     if (midi === null) return;
     event.preventDefault();
-    onNote(midi);
+    cb(midi);
   };
-  window.addEventListener("keydown", handler);
-  return () => window.removeEventListener("keydown", handler);
+  const onKeyDown = dispatch(onNote);
+  const onKeyUp = dispatch(onRelease);
+  window.addEventListener("keydown", onKeyDown);
+  window.addEventListener("keyup", onKeyUp);
+  return () => {
+    window.removeEventListener("keydown", onKeyDown);
+    window.removeEventListener("keyup", onKeyUp);
+  };
 }

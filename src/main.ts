@@ -1,66 +1,112 @@
 import "./style.css";
-import { allowedNotes } from "./domain/scale";
-import { generateSequence } from "./domain/sequence";
-import { startSession, playNote, type SessionState } from "./domain/session";
+import { allowedNotes, spellMidi, keyPrefersFlats } from "./domain/scale";
+import { pickNote } from "./domain/sequence";
+import { emptyScore, updateScore, type Score } from "./domain/score";
+import { matchPitch } from "./domain/match";
+import { nearestMidiWithPitchClass, noteToMidi, type SpelledNote } from "./domain/note";
 import { mulberry32 } from "./domain/rng";
-import { renderNote, renderMessage } from "./io/renderer";
+import { renderNotes } from "./io/renderer";
 import { listenKeyboard } from "./io/keyboard";
 import { listenMidi, type MidiStatus } from "./io/midi";
+import { buildPiano } from "./io/piano";
 import { KEY_OPTIONS } from "./keys";
 
 const RANGE = { minMidi: 48, maxMidi: 84 };
-const GREEN_FLASH_MS = 350;
+const LINGER_MS = 500; // how long the green correct note stays after the key is released
+const PIANO_OCTAVES = 2;
+const BEST_KEY = "sheet-reading.best";
 
 const settings = {
   keyIndex: 0,
   includeAccidentals: false,
   minInterval: 7,
-  length: 20,
   baseOctave: 4,
   ignoreOctave: true,
 };
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
-
 const staffEl = $<HTMLDivElement>("staff");
-const progressEl = $("progress");
+const pianoEl = $("piano");
+const streakCurrentEl = $("streak-current");
+const streakBestEl = $("streak-best");
 const midiStatusEl = $("midi-status");
 
-let session: SessionState | null = null;
+const rng = mulberry32((Date.now() ^ (performance.now() * 1000)) >>> 0);
 
-function newSequence() {
-  const scale = KEY_OPTIONS[settings.keyIndex]!.scale;
-  const pool = allowedNotes(scale, settings.includeAccidentals, RANGE);
-  const sequence = generateSequence({
-    notes: pool,
-    minInterval: settings.minInterval,
-    length: settings.length,
-    rng: mulberry32(Date.now() >>> 0),
-  });
-  session = startSession(sequence);
-  renderCurrent();
+let pool: SpelledNote[] = [];
+let current: SpelledNote;
+let prevMidi: number | null = null;
+let score: Score = emptyScore(loadBest());
+let awaitingRelease: number | null = null;
+
+function loadBest(): number {
+  return Number(localStorage.getItem(BEST_KEY)) || 0;
 }
 
-function renderCurrent() {
-  if (!session) return;
-  if (session.done) {
-    renderMessage(staffEl, "Done — press “New sequence”.");
-    progressEl.textContent = `${session.sequence.length} / ${session.sequence.length}`;
-    return;
-  }
-  renderNote(staffEl, session.sequence[session.index]!, "pending");
-  progressEl.textContent = `${session.index + 1} / ${session.sequence.length}`;
+function currentScale() {
+  return KEY_OPTIONS[settings.keyIndex]!.scale;
+}
+
+function renderPending() {
+  renderNotes(staffEl, [{ note: current, status: "pending" }]);
+}
+
+/** Move to a fresh note, far from the one just finished. */
+function advance() {
+  current = pickNote(pool, prevMidi, settings.minInterval, rng);
+  prevMidi = noteToMidi(current);
+  renderPending();
+}
+
+/** Rebuild the note pool and start on a fresh, unconstrained note. */
+function restart() {
+  pool = allowedNotes(currentScale(), settings.includeAccidentals, RANGE);
+  prevMidi = null;
+  awaitingRelease = null;
+  advance();
+}
+
+function updateScoreUI() {
+  streakCurrentEl.textContent = String(score.streak);
+  streakBestEl.textContent = `best ${score.best}`;
+}
+
+/** How the played pitch should appear on the staff next to the target. */
+function playedDisplayNote(playedMidi: number): SpelledNote {
+  const preferFlat = keyPrefersFlats(currentScale());
+  const midi = settings.ignoreOctave
+    ? nearestMidiWithPitchClass(playedMidi, noteToMidi(current))
+    : playedMidi;
+  return spellMidi(midi, preferFlat);
 }
 
 function onPlay(midi: number) {
-  if (!session || session.done) return;
-  const playedIndex = session.index;
-  const note = session.sequence[playedIndex]!;
-  session = playNote(session, midi, { ignoreOctave: settings.ignoreOctave });
-  const status = session.statuses[playedIndex]!;
+  if (awaitingRelease !== null) return;
+  const correct = matchPitch(noteToMidi(current), midi, { ignoreOctave: settings.ignoreOctave }) === "correct";
+  score = updateScore(score, correct);
+  if (score.best > loadBest()) localStorage.setItem(BEST_KEY, String(score.best));
+  updateScoreUI();
 
-  renderNote(staffEl, note, status);
-  if (status === "correct") window.setTimeout(renderCurrent, GREEN_FLASH_MS);
+  if (correct) {
+    renderNotes(staffEl, [{ note: current, status: "correct" }]);
+    awaitingRelease = midi;
+  } else {
+    renderNotes(staffEl, [
+      { note: current, status: "pending" },
+      { note: playedDisplayNote(midi), status: "wrong" },
+    ]);
+  }
+}
+
+function onRelease(midi: number) {
+  if (awaitingRelease === null || midi !== awaitingRelease) return;
+  awaitingRelease = null;
+  // Keep the green note up a moment after release, even for a quick tap, then move on.
+  window.setTimeout(advance, LINGER_MS);
+}
+
+function buildPianoUI() {
+  buildPiano(pianoEl, noteToMidi({ step: "C", alter: 0, octave: settings.baseOctave }), PIANO_OCTAVES, onPlay, onRelease);
 }
 
 function bindControls() {
@@ -74,14 +120,14 @@ function bindControls() {
   keySel.value = String(settings.keyIndex);
   keySel.addEventListener("change", () => {
     settings.keyIndex = Number(keySel.value);
-    newSequence();
+    restart();
   });
 
   const accidentals = $<HTMLInputElement>("accidentals");
   accidentals.checked = settings.includeAccidentals;
   accidentals.addEventListener("change", () => {
     settings.includeAccidentals = accidentals.checked;
-    newSequence();
+    restart();
   });
 
   const minInterval = $<HTMLInputElement>("minInterval");
@@ -92,19 +138,12 @@ function bindControls() {
     settings.minInterval = Number(minInterval.value);
     minIntervalOut.textContent = minInterval.value;
   });
-  minInterval.addEventListener("change", newSequence);
-
-  const length = $<HTMLInputElement>("length");
-  length.value = String(settings.length);
-  length.addEventListener("change", () => {
-    settings.length = Math.max(1, Number(length.value));
-    newSequence();
-  });
 
   const baseOctave = $<HTMLInputElement>("baseOctave");
   baseOctave.value = String(settings.baseOctave);
   baseOctave.addEventListener("change", () => {
     settings.baseOctave = Number(baseOctave.value);
+    buildPianoUI();
   });
 
   const ignoreOctave = $<HTMLInputElement>("ignoreOctave");
@@ -112,13 +151,11 @@ function bindControls() {
   ignoreOctave.addEventListener("change", () => {
     settings.ignoreOctave = ignoreOctave.checked;
   });
-
-  $("new").addEventListener("click", newSequence);
 }
 
 function showMidiStatus(status: MidiStatus) {
   if (status.kind === "unsupported") {
-    midiStatusEl.textContent = "MIDI: not supported in this browser (use the computer keyboard).";
+    midiStatusEl.textContent = "MIDI: not supported in this browser (use the keyboard below).";
   } else if (status.kind === "denied") {
     midiStatusEl.textContent = "MIDI: access denied.";
   } else {
@@ -129,6 +166,8 @@ function showMidiStatus(status: MidiStatus) {
 }
 
 bindControls();
-listenKeyboard(() => settings.baseOctave, onPlay);
-void listenMidi(onPlay, showMidiStatus);
-newSequence();
+buildPianoUI();
+listenKeyboard(() => settings.baseOctave, onPlay, onRelease);
+void listenMidi(onPlay, onRelease, showMidiStatus);
+updateScoreUI();
+restart();

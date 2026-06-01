@@ -4,14 +4,16 @@ export type MidiStatus =
   | { kind: "ready"; devices: string[] };
 
 const NOTE_ON = 0x90;
+const NOTE_OFF = 0x80;
 
 /**
- * Subscribe to Note-On messages from all MIDI inputs. Resolves with a disposer;
- * `onStatus` reports device availability for the UI. Safe to call in browsers
- * without Web MIDI — it simply reports "unsupported".
+ * Subscribe to Note-On/Note-Off messages from all MIDI inputs. Resolves with a
+ * disposer; `onStatus` reports device availability for the UI. Safe to call in
+ * browsers without Web MIDI — it simply reports "unsupported".
  */
 export async function listenMidi(
   onNote: (midi: number) => void,
+  onRelease: (midi: number) => void,
   onStatus: (status: MidiStatus) => void,
 ): Promise<() => void> {
   const nav = navigator as Navigator & {
@@ -34,7 +36,9 @@ export async function listenMidi(
     const data = event.data;
     if (!data || data.length < 3) return;
     const [status, note, velocity] = data;
-    if ((status! & 0xf0) === NOTE_ON && velocity! > 0) onNote(note!);
+    const command = status! & 0xf0;
+    if (command === NOTE_ON && velocity! > 0) onNote(note!);
+    else if (command === NOTE_OFF || (command === NOTE_ON && velocity === 0)) onRelease(note!);
   };
 
   const attach = () => {

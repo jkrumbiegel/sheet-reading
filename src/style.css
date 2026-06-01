@@ -43,10 +43,63 @@ h1 {
   text-align: center;
 }
 
-#progress {
-  margin: 0.5rem 0 0;
-  color: #666;
+#streak {
+  margin-top: 0.75rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
   font-variant-numeric: tabular-nums;
+}
+
+#streak-current {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1a9e3b;
+  line-height: 1;
+}
+
+#streak-best {
+  font-size: 0.95rem;
+  color: #999;
+}
+
+#piano {
+  position: relative;
+  display: flex;
+  height: 140px;
+  margin: 1.25rem 0;
+  touch-action: none;
+  user-select: none;
+}
+
+.key {
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.key.white {
+  background: #fff;
+  border: 1px solid #bbb;
+  border-radius: 0 0 5px 5px;
+}
+
+.key.white.active {
+  background: #d8efdd;
+}
+
+.key.black {
+  position: absolute;
+  top: 0;
+  height: 62%;
+  transform: translateX(-50%);
+  background: #222;
+  border: 1px solid #000;
+  border-radius: 0 0 4px 4px;
+  z-index: 1;
+}
+
+.key.black.active {
+  background: #2f7d43;
 }
 
 #controls {
