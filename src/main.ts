@@ -10,7 +10,7 @@ import { renderNotes } from "./io/renderer";
 import { listenKeyboard } from "./io/keyboard";
 import { listenMidi, type MidiStatus } from "./io/midi";
 import { buildPiano } from "./io/piano";
-import { playAudio, stopAudio } from "./io/audio";
+import { playAudio, stopAudio, unlockAudio } from "./io/audio";
 import { KEY_OPTIONS } from "./keys";
 
 const RANGE = { minMidi: 28, maxMidi: 93 }; // E1 .. A6
@@ -205,6 +205,16 @@ function showMidiStatus(status: MidiStatus) {
       ? `MIDI: ${status.devices.join(", ")}`
       : "MIDI: ready (no device connected yet).";
   }
+}
+
+let audioUnlocked = false;
+function unlockAudioOnce() {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  unlockAudio();
+}
+for (const event of ["pointerdown", "touchend", "keydown"]) {
+  window.addEventListener(event, unlockAudioOnce, { passive: true });
 }
 
 bindControls();

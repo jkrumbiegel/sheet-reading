@@ -4,17 +4,29 @@ let context: AudioContext | null = null;
 let piano: ReturnType<typeof Soundfont> | null = null;
 const active = new Map<number, StopFn>();
 
-/**
- * Lazily create the audio context and load the GM grand piano on first use,
- * resuming the context within the user gesture that called us (autoplay policy).
- */
 function ensurePiano() {
   if (!context) {
-    context = new AudioContext();
+    const Ctor = (window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext);
+    context = new Ctor();
     piano = Soundfont(context, { instrument: "acoustic_grand_piano" });
   }
   if (context.state === "suspended") void context.resume();
   return piano!;
+}
+
+/**
+ * Unlock audio from within a user gesture. iOS keeps an AudioContext suspended
+ * until something actually plays during a gesture; samples load asynchronously,
+ * so we tick a silent buffer now to unlock before the first real note arrives.
+ */
+export function unlockAudio() {
+  ensurePiano();
+  const ctx = context!;
+  const source = ctx.createBufferSource();
+  source.buffer = ctx.createBuffer(1, 1, 22050);
+  source.connect(ctx.destination);
+  source.start(0);
 }
 
 /**
