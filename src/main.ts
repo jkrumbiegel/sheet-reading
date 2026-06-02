@@ -24,7 +24,6 @@ const settings = {
   includeAccidentals: false,
   minInterval: 7,
   baseOctave: 4,
-  ignoreOctave: true,
   sound: true,
 };
 
@@ -90,18 +89,19 @@ function updateScoreUI() {
   streakBestEl.textContent = `best ${score.best}`;
 }
 
-/** How the played pitch should appear on the staff next to the target. */
-function playedDisplayNote(playedMidi: number): SpelledNote {
-  const preferFlat = keyPrefersFlats(currentScale());
-  const midi = settings.ignoreOctave
-    ? nearestMidiWithPitchClass(playedMidi, noteToMidi(current))
-    : playedMidi;
-  return spellMidi(midi, preferFlat);
+/** The pitch a played input sounds: snapped to the target's octave unless the octave counts. */
+function soundedPitch(playedMidi: number, ignoreOctave: boolean): number {
+  return ignoreOctave ? nearestMidiWithPitchClass(playedMidi, noteToMidi(current)) : playedMidi;
 }
 
-function onPlay(midi: number) {
+/** How the played pitch should appear on the staff next to the target. */
+function playedDisplayNote(playedMidi: number, ignoreOctave: boolean): SpelledNote {
+  return spellMidi(soundedPitch(playedMidi, ignoreOctave), keyPrefersFlats(currentScale()));
+}
+
+function onPlay(midi: number, ignoreOctave: boolean) {
   if (awaitingRelease !== null) return;
-  const correct = matchPitch(noteToMidi(current), midi, { ignoreOctave: settings.ignoreOctave }) === "correct";
+  const correct = matchPitch(noteToMidi(current), midi, { ignoreOctave }) === "correct";
   score = updateScore(score, correct);
   if (score.best > loadBest()) localStorage.setItem(BEST_KEY, String(score.best));
   stats = recordResult(stats, noteToMidi(current), correct);
@@ -114,7 +114,7 @@ function onPlay(midi: number) {
   } else {
     renderNotes(staffEl, [
       { note: current, status: "pending" },
-      { note: playedDisplayNote(midi), status: "wrong" },
+      { note: playedDisplayNote(midi, ignoreOctave), status: "wrong" },
     ]);
   }
 }
@@ -127,10 +127,13 @@ function onRelease(midi: number) {
 }
 
 // Audio sounds for any played key, independent of the game logic (so you still
-// hear a note even while a correct one is lingering and input is ignored).
-function handlePlay(midi: number) {
-  if (settings.sound) playAudio(midi);
-  onPlay(midi);
+// hear a note even while a correct one is lingering and input is ignored). The
+// computer and on-screen keyboards can't choose an octave, so their octave is
+// ignored and the sound snaps to the staff's register; a MIDI keyboard can, so
+// its octave counts and it sounds exactly what's played.
+function handlePlay(midi: number, ignoreOctave: boolean) {
+  if (settings.sound) playAudio(midi, soundedPitch(midi, ignoreOctave));
+  onPlay(midi, ignoreOctave);
 }
 
 function handleRelease(midi: number) {
@@ -139,7 +142,13 @@ function handleRelease(midi: number) {
 }
 
 function buildPianoUI() {
-  buildPiano(pianoEl, noteToMidi({ step: "C", alter: 0, octave: settings.baseOctave }), PIANO_OCTAVES, handlePlay, handleRelease);
+  buildPiano(
+    pianoEl,
+    noteToMidi({ step: "C", alter: 0, octave: settings.baseOctave }),
+    PIANO_OCTAVES,
+    (midi) => handlePlay(midi, true),
+    handleRelease,
+  );
 }
 
 function bindControls() {
@@ -179,12 +188,6 @@ function bindControls() {
     buildPianoUI();
   });
 
-  const ignoreOctave = $<HTMLInputElement>("ignoreOctave");
-  ignoreOctave.checked = settings.ignoreOctave;
-  ignoreOctave.addEventListener("change", () => {
-    settings.ignoreOctave = ignoreOctave.checked;
-  });
-
   const sound = $<HTMLInputElement>("sound");
   sound.checked = settings.sound;
   sound.addEventListener("change", () => {
@@ -206,7 +209,7 @@ function showMidiStatus(status: MidiStatus) {
 
 bindControls();
 buildPianoUI();
-listenKeyboard(() => settings.baseOctave, handlePlay, handleRelease);
-void listenMidi(handlePlay, handleRelease, showMidiStatus);
+listenKeyboard(() => settings.baseOctave, (midi) => handlePlay(midi, true), handleRelease);
+void listenMidi((midi) => handlePlay(midi, false), handleRelease, showMidiStatus);
 updateScoreUI();
 restart();

@@ -17,15 +17,19 @@ function ensurePiano() {
   return piano!;
 }
 
-export function playAudio(midi: number) {
+/**
+ * Sound `pitch`, tracked under `key` (the input note) so the matching release
+ * stops it even when the sounded pitch was transposed to another octave.
+ */
+export function playAudio(key: number, pitch: number) {
   const instrument = ensurePiano();
-  active.get(midi)?.(); // retrigger: silence any still-ringing voice for this note
-  active.set(midi, instrument.start({ note: midi, velocity: 100 }));
+  active.get(key)?.(); // retrigger: silence any still-ringing voice for this key
+  active.set(key, instrument.start({ note: pitch, velocity: 100 }));
 }
 
-export function stopAudio(midi: number) {
-  const stop = active.get(midi);
+export function stopAudio(key: number) {
+  const stop = active.get(key);
   if (!stop) return;
   stop();
-  active.delete(midi);
+  active.delete(key);
 }

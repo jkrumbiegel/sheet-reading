@@ -70,8 +70,12 @@ the build so asset paths resolve under the project-pages URL.
 ## Settings
 
 Base key (default C major), include sharps/flats, minimum jump between notes,
-keyboard base octave, and ignore-octave matching (match by pitch class only —
-handy for the one-octave computer keyboard and the on-screen piano).
+keyboard base octave, and piano sound on/off.
+
+Octave handling is automatic per input source: the computer keyboard and the
+one-octave on-screen piano can't choose a register, so their octave is ignored
+(matched by pitch class) and the sound snaps to the staff's octave; a MIDI
+keyboard can choose, so its octave counts and it sounds exactly what you play.
 
 ## Status / next steps
 
