@@ -10,6 +10,7 @@ import { renderNotes } from "./io/renderer";
 import { listenKeyboard } from "./io/keyboard";
 import { listenMidi, type MidiStatus } from "./io/midi";
 import { buildPiano } from "./io/piano";
+import { playAudio, stopAudio } from "./io/audio";
 import { KEY_OPTIONS } from "./keys";
 
 const RANGE = { minMidi: 28, maxMidi: 93 }; // E1 .. A6
@@ -24,6 +25,7 @@ const settings = {
   minInterval: 7,
   baseOctave: 4,
   ignoreOctave: true,
+  sound: true,
 };
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -124,8 +126,20 @@ function onRelease(midi: number) {
   window.setTimeout(advance, LINGER_MS);
 }
 
+// Audio sounds for any played key, independent of the game logic (so you still
+// hear a note even while a correct one is lingering and input is ignored).
+function handlePlay(midi: number) {
+  if (settings.sound) playAudio(midi);
+  onPlay(midi);
+}
+
+function handleRelease(midi: number) {
+  if (settings.sound) stopAudio(midi);
+  onRelease(midi);
+}
+
 function buildPianoUI() {
-  buildPiano(pianoEl, noteToMidi({ step: "C", alter: 0, octave: settings.baseOctave }), PIANO_OCTAVES, onPlay, onRelease);
+  buildPiano(pianoEl, noteToMidi({ step: "C", alter: 0, octave: settings.baseOctave }), PIANO_OCTAVES, handlePlay, handleRelease);
 }
 
 function bindControls() {
@@ -170,6 +184,12 @@ function bindControls() {
   ignoreOctave.addEventListener("change", () => {
     settings.ignoreOctave = ignoreOctave.checked;
   });
+
+  const sound = $<HTMLInputElement>("sound");
+  sound.checked = settings.sound;
+  sound.addEventListener("change", () => {
+    settings.sound = sound.checked;
+  });
 }
 
 function showMidiStatus(status: MidiStatus) {
@@ -186,7 +206,7 @@ function showMidiStatus(status: MidiStatus) {
 
 bindControls();
 buildPianoUI();
-listenKeyboard(() => settings.baseOctave, onPlay, onRelease);
-void listenMidi(onPlay, onRelease, showMidiStatus);
+listenKeyboard(() => settings.baseOctave, handlePlay, handleRelease);
+void listenMidi(handlePlay, handleRelease, showMidiStatus);
 updateScoreUI();
 restart();

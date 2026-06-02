@@ -16,6 +16,7 @@
     "vitest": "^3.0.2"
   },
   "dependencies": {
+    "smplr": "^0.26.0",
     "vexflow": "^4.2.3"
   }
 }

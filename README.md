@@ -3,7 +3,8 @@
 A small web app for drilling note reading on piano staves. A note is shown on a
 grand staff; you play it on your computer keyboard, the on-screen piano (tap on
 mobile), or a MIDI keyboard. A correct pitch turns green; a wrong one is shown in
-red next to the target so you see your mistake.
+red next to the target so you see your mistake. Played notes sound on a sampled
+GM grand piano (toggleable).
 
 Notes come endlessly, one at a time, each jumping far from the previous one
 (configurable minimum interval), so you must recognise each note on its own
@@ -52,6 +53,7 @@ src/
     midi.ts        Web MIDI Note-On / Note-Off subscription
     renderer.ts    VexFlow grand-staff rendering (note far from the clef)
     piano.ts       tappable on-screen piano keyboard
+    audio.ts       GM grand-piano playback via smplr (sampled, CDN-loaded)
   keys.ts        the selectable major keys
   main.ts        settings UI + wiring
 ```
